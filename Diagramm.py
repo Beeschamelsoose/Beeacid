@@ -17,6 +17,7 @@ for row in sheet.rows():
 data_full = pd.DataFrame(rows[1:],columns=rows[0])
 #abschneiden bei diskontinuirät
 data = data_full.iloc[:366].copy()
+#data = data_full.copy()
 
 for col in data.columns [1:]:
     data[col] = pd.to_numeric(data[col],errors="coerce")
@@ -52,7 +53,7 @@ def h_to_hhmm(h):
     mm = (total_sec % 3600) // 60
     return f"{hh:02d}:{mm:02d}"
 
-tick_step_h = 6
+tick_step_h = 12
 
 xmin = delta_t.min()
 xmax = delta_t.max()
@@ -72,7 +73,7 @@ night_ends   = night_starts + 12
 
 #plot
 fig, ax1 =plt.subplots()
-axisstretch = 0.1
+
 ax2 = ax1.twinx()
 
 #Nachts is grau
@@ -83,24 +84,64 @@ for ns, ne in zip(night_starts, night_ends):
         ax1.axvspan(left, right, color="gray", alpha=0.25, lw=0)
 
 #Hier Figures definieren
-l1,=ax1.plot(delta_t, data["MW TT"],'-x',label='Temperaturmittel')
-ax1.fill_between(delta_t, data["MW TT"]-data["SD TT"],data["MW TT"]+data["SD TT"],alpha = 0.2, edgecolor="none")
-l2,=ax1.plot(delta_t, data["MW RF"],'-x',label='Feuchtigkeitsmittel')
-ax1.fill_between(delta_t, data["MW RF"]-data["SD RF"],data["MW RF"]+data["SD RF"],alpha = 0.2, edgecolor="none")
-l3,=ax2.plot(delta_t, data["MW AS"],'-x', label='Ameisensäuremittel', color="green")
-ax2.fill_between(delta_t, (data["MW AS"]-data["SD AS"]),(data["MW AS"]+data["SD AS"]),alpha = 0.2, edgecolor="none")
-#ax.plot(delta_t,data["t_h"],label='Uhrzeit')
-ax1.grid(True)
-ax1.set_ylabel("T [°C] / rel. Luftfeuchte [%h]")
-ax2.set_ylabel("Konzentration Ameisensäure")
 
+l3,=ax1.plot(delta_t, data["MW AS"]
+             ,'.', label='Formic acid', color="green")
+ax1.fill_between(delta_t, 
+                (data["MW AS"]-data["SD AS"]),
+                (data["MW AS"]+data["SD AS"]),
+                alpha = 0.5, edgecolor="none", color="lightgreen")
+l1,=ax2.plot(delta_t, data["MW TT"],
+            '.',label='Outside temperature', color="red")
+ax2.fill_between(delta_t,
+                data["MW TT"]-data["SD TT"],
+                data["MW TT"]+data["SD TT"],
+                alpha = 0.5, edgecolor="none", color="orange")
+l2,=ax2.plot(delta_t, data["MW RF"],
+             '.',label='Outside relative humidity',color="blue")
+ax2.fill_between(delta_t, 
+                data["MW RF"]-data["SD RF"],
+                data["MW RF"]+data["SD RF"],
+                alpha = 0.5, edgecolor="none", color="lightblue")
+#ax.plot(delta_t,data["t_h"],label='Uhrzeit')
+ax1.set_zorder(2)
+ax2.set_zorder(1)
+ax1.patch.set_visible(False)
+
+ax2.grid(True)
+ax2.grid(True,axis='x',zorder=0)
+
+ax2.set_ylabel("Temperatur [°C]  -  Relative humidity [%]")
+ax1.set_ylabel("Formic acid concentration [ppm]")
+ax2.set_ylim(-40,100)
+ax1.set_ylim(0,800)
+#ax1.set_xlim(-5,360)    
+#ax2.set_xlim(-5,360)
+
+#X Achse einstellen
+
+axx2 = ax1.secondary_xaxis('top')
+ax1.set_xlabel('Time [hours] after application')
+axx2.set_xlabel('Calendar days after application ')
 labels = [h_to_hhmm(t+offset)for t in ticks]
-ax1.set_xticks(ticks)
-ax1.set_xticklabels(labels, rotation=90)
+
+tick_rel = np.arange(xmin - (xmin % 24), xmax + 24, 24)
+
+
+
+axx2.set_xticks(tick_rel)
+axx2.set_xticklabels([f"{t/24:.0f}" for t in tick_rel])
+
+ax1.set_xticks(tick_rel)
+ax1.set_xticklabels([f"{t:.0f}" for t in tick_rel])
+
+#plt.title("Messwertverläufe nach der Zeit")
+
+lines=[l3,l1,l2]
+labels = [line.get_label() for line in lines]
+
+ax2.legend(lines, labels,loc='right')
 
 plt.tight_layout()
-lines=[l1,l2,l3]
-labels = [line.get_label() for line in lines]
-plt.legend(lines, labels)
 plt.show()
 
